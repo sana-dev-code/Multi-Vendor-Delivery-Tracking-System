@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeliverHub — Multi-Vendor Tracking System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f8f9fb;--surface:#fff;--border:#e5e7eb;--border-dark:#d1d5db;
+    --text:#111827;--muted:#6b7280;--hint:#9ca3af;
+    --primary:#4f46e5;--primary-light:#eef2ff;--primary-dark:#3730a3;
+    --success:#059669;--success-bg:#ecfdf5;
+    --warning:#d97706;--warning-bg:#fffbeb;
+    --danger:#dc2626;--danger-bg:#fef2f2;
+    --info:#0284c7;--info-bg:#e0f2fe;
+    --radius:10px;--radius-lg:14px;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:0 4px 12px rgba(0,0,0,.1);
+  }
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+
+  /* AUTH SCREEN */
+  #auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+  .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem;width:100%;max-width:420px;box-shadow:var(--shadow-md)}
+  .auth-logo{text-align:center;margin-bottom:2rem}
+  .auth-logo .icon{width:48px;height:48px;background:var(--primary);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:.75rem}
+  .auth-logo .icon svg{width:26px;height:26px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .auth-logo h1{font-size:20px;font-weight:600;color:var(--text)}
+  .auth-logo p{font-size:13px;color:var(--muted);margin-top:3px}
+  .auth-tabs{display:flex;background:var(--bg);border-radius:var(--radius);padding:3px;margin-bottom:1.5rem;gap:3px}
+  .auth-tab{flex:1;padding:.5rem;border:none;background:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s}
+  .auth-tab.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+  .form-group{margin-bottom:1rem}
+  .form-group label{display:block;font-size:13px;font-weight:500;color:var(--text);margin-bottom:.4rem}
+  .form-group input,.form-group select{width:100%;padding:.6rem .85rem;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;background:var(--surface);color:var(--text);outline:none;transition:border .15s}
+  .form-group input:focus,.form-group select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.6rem 1.2rem;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .15s;font-family:inherit}
+  .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .btn-primary:hover{background:var(--primary-dark)}
+  .btn-primary:disabled{opacity:.6;cursor:not-allowed}
+  .btn-full{width:100%}
+  .btn-sm{padding:.4rem .85rem;font-size:13px}
+  .btn-outline{background:transparent;color:var(--text);border-color:var(--border)}
+  .btn-outline:hover{background:var(--bg)}
+  .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+  .btn-success{background:var(--success);color:#fff;border-color:var(--success)}
+  .msg{padding:.6rem .9rem;border-radius:var(--radius);font-size:13px;margin-bottom:1rem}
+  .msg-error{background:var(--danger-bg);color:var(--danger);border:1px solid #fca5a5}
+  .msg-success{background:var(--success-bg);color:var(--success);border:1px solid #6ee7b7}
+  .api-note{background:var(--primary-light);border:1px solid #c7d2fe;border-radius:var(--radius);padding:.75rem 1rem;margin-bottom:1.25rem;font-size:12px;color:var(--primary-dark)}
+  .api-note strong{display:block;margin-bottom:.25rem}
+
+  /* LAYOUT */
+  #app{display:none;height:100vh;overflow:hidden;flex-direction:column}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.5rem;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+  .topbar-left{display:flex;align-items:center;gap:.75rem}
+  .topbar-logo{display:flex;align-items:center;gap:.5rem;font-size:16px;font-weight:600}
+  .topbar-logo .dot{width:8px;height:8px;background:var(--primary);border-radius:50%;display:inline-block}
+  .role-badge{font-size:11px;font-weight:500;padding:.2rem .6rem;border-radius:20px}
+  .rb-ADMIN{background:#ede9fe;color:#5b21b6}
+  .rb-VENDOR{background:#fef3c7;color:#92400e}
+  .rb-DRIVER{background:#d1fae5;color:#065f46}
+  .rb-CUSTOMER{background:#dbeafe;color:#1e40af}
+  .topbar-user{display:flex;align-items:center;gap:.75rem}
+  .user-avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600}
+  .app-body{display:flex;flex:1;overflow:hidden}
+  .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:1rem .75rem;overflow-y:auto;flex-shrink:0}
+  .nav-section{margin-bottom:1.5rem}
+  .nav-section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--hint);padding:.25rem .75rem;margin-bottom:.35rem}
+  .nav-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .75rem;border-radius:8px;cursor:pointer;color:var(--muted);font-size:13.5px;font-weight:500;transition:all .12s;border:none;background:none;width:100%;text-align:left;margin-bottom:2px}
+  .nav-item:hover{background:var(--bg);color:var(--text)}
+  .nav-item.active{background:var(--primary-light);color:var(--primary)}
+  .nav-item svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .main{flex:1;overflow-y:auto;padding:1.5rem}
+  .page{display:none}
+  .page.active{display:block}
+  .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+  .page-title{font-size:18px;font-weight:600}
+  .page-sub{font-size:13px;color:var(--muted);margin-top:2px}
+
+  /* CARDS & GRID */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin-bottom:1.5rem}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.1rem 1.25rem}
+  .stat-label{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:.5rem}
+  .stat-value{font-size:26px;font-weight:600;color:var(--text);line-height:1}
+  .stat-sub{font-size:12px;color:var(--muted);margin-top:.35rem}
+  .stat-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:.75rem}
+  .si-purple{background:#ede9fe}.si-teal{background:#ccfbf1}.si-amber{background:#fef3c7}.si-blue{background:#dbeafe}.si-green{background:#d1fae5}.si-red{background:#fee2e2}
+  .stat-icon svg{width:18px;height:18px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .si-purple svg{stroke:#7c3aed}.si-teal svg{stroke:#0d9488}.si-amber svg{stroke:#d97706}.si-blue svg{stroke:#2563eb}.si-green svg{stroke:#059669}.si-red svg{stroke:#dc2626}
+
+  /* TABLE */
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+  .table-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border)}
+  .table-title{font-size:14px;font-weight:600}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:.65rem 1.25rem;text-align:left;background:var(--bg);border-bottom:1px solid var(--border)}
+  tbody td{padding:.75rem 1.25rem;font-size:13.5px;border-bottom:1px solid var(--border);color:var(--text)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--bg)}
+
+  /* STATUS BADGES */
+  .badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:.25rem .6rem;border-radius:20px;white-space:nowrap}
+  .b-pending{background:#fef3c7;color:#92400e}
+  .b-confirmed,.b-assigned,.b-active{background:#dbeafe;color:#1e40af}
+  .b-picked_up,.b-in_transit{background:#ede9fe;color:#5b21b6}
+  .b-delivered{background:#d1fae5;color:#065f46}
+  .b-cancelled,.b-suspended{background:#fee2e2;color:#991b1b}
+  .b-available{background:#ccfbf1;color:#0f766e}
+
+  /* FORM PANEL */
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem}
+  .panel-title{font-size:15px;font-weight:600;margin-bottom:1.25rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  @media(max-width:600px){.form-row{grid-template-columns:1fr}}
+  .form-actions{display:flex;gap:.75rem;margin-top:1.25rem;justify-content:flex-end}
+
+  /* LOADING & EMPTY */
+  .loading{text-align:center;padding:3rem;color:var(--muted)}
+  .loading .spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto .75rem}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .empty{text-align:center;padding:3rem 1rem;color:var(--muted)}
+  .empty svg{width:40px;height:40px;stroke:var(--border-dark);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;margin-bottom:.75rem}
+
+  /* TOAST */
+  #toast-container{position:fixed;top:1rem;right:1rem;z-index:999;display:flex;flex-direction:column;gap:.5rem}
+  .toast{background:var(--text);color:#fff;padding:.7rem 1.1rem;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:var(--shadow-md);max-width:300px;animation:slideIn .2s ease}
+  .toast-success{background:var(--success)}
+  .toast-error{background:var(--danger)}
+  @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+  /* MODAL */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem}
+  .modal{background:var(--surface);border-radius:var(--radius-lg);padding:1.75rem;width:100%;max-width:460px;box-shadow:var(--shadow-md)}
+  .modal-title{font-size:16px;font-weight:600;margin-bottom:1.25rem}
+  .modal-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem}
+
+  /* TRACKING TIMELINE */
+  .timeline{padding:1rem 0}
+  .tl-item{display:flex;gap:1rem;padding-bottom:1.25rem;position:relative}
+  .tl-item:last-child{padding-bottom:0}
+  .tl-dot{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:2px solid var(--border)}
+  .tl-dot.done{background:var(--primary);border-color:var(--primary)}
+  .tl-dot.done svg{stroke:#fff}
+  .tl-dot svg{width:13px;height:13px;fill:none;stroke:var(--hint);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+  .tl-line{position:absolute;left:14px;top:28px;bottom:0;width:1px;background:var(--border)}
+  .tl-content{padding-top:3px}
+  .tl-title{font-size:13.5px;font-weight:500}
+  .tl-time{font-size:12px;color:var(--muted);margin-top:2px}
+
+  /* ALERT */
+  .alert{padding:.75rem 1rem;border-radius:var(--radius);font-size:13px;margin-bottom:1rem;display:flex;align-items:flex-start;gap:.5rem}
+  .alert-info{background:var(--info-bg);color:var(--info);border:1px solid #bae6fd}
+  .alert-warning{background:var(--warning-bg);color:var(--warning);border:1px solid #fde68a}
+</style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="icon">
+        <svg viewBox="0 0 24 24"><path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z"/></svg>
+      </div>
+      <h1>DeliverHub</h1>
+      <p>Multi-Vendor Delivery Tracking System</p>
+    </div>
+
+    <div class="api-note">
+      <strong>🔌 API Base URL</strong>
+      <div style="display:flex;gap:.5rem;align-items:center;margin-top:.35rem">
+        <input id="api-base-url" type="text" value="http://localhost:8000" style="flex:1;padding:.35rem .6rem;font-size:12px;border:1px solid #c7d2fe;border-radius:6px;background:#fff;font-family:monospace">
+      </div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Sign in</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+    </div>
+
+    <div id="auth-msg"></div>
+
+    <!-- LOGIN -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-full" id="login-btn" onclick="doLogin()">Sign in</button>
+      <div style="margin-top:1rem;text-align:center;font-size:12px;color:var(--muted)">Demo: register first, then log in with your credentials</div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label>Full name</label>
+        <input type="text" id="reg-name" placeholder="Jane Smith">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="reg-password" placeholder="Min. 8 characters">
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="reg-role">
+          <option value="ADMIN">Admin</option>
+          <option value="VENDOR">Vendor</option>
+          <option value="DRIVER">Driver</option>
+          <option value="CUSTOMER">Customer</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-full" id="reg-btn" onclick="doRegister()">Create account</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <span class="dot"></span> DeliverHub
+      </div>
+      <span class="role-badge" id="top-role-badge"></span>
+    </div>
+    <div class="topbar-user">
+      <span style="font-size:13px;color:var(--muted)" id="top-user-name"></span>
+      <div class="user-avatar" id="top-avatar"></div>
+      <button class="btn btn-sm btn-outline" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="main" id="main-content">
+      <!-- Pages injected here -->
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-container"></div>
+
+<script>
+let STATE = {
+  token: localStorage.getItem('dh_token') || null,
+  user: JSON.parse(localStorage.getItem('dh_user') || 'null'),
+  baseUrl: localStorage.getItem('dh_base') || 'http://localhost:8000'
+};
+
+function getBase(){ return document.getElementById('api-base-url')?.value || STATE.baseUrl }
+
+async function api(method, path, body=null){
+  const headers = {'Content-Type':'application/json'};
+  if(STATE.token) headers['Authorization'] = 'Bearer '+STATE.token;
+  const opts = {method, headers};
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch(getBase()+path, opts);
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.detail || 'Request failed');
+  return data;
+}
+
+function toast(msg, type=''){
+  const el = document.createElement('div');
+  el.className = 'toast'+(type?' toast-'+type:'');
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(), 3500);
+}
+
+function showMsg(html, type='error'){
+  const el = document.getElementById('auth-msg');
+  el.innerHTML = `<div class="msg msg-${type}">${html}</div>`;
+}
+
+function switchAuthTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('login-form').style.display = tab==='login'?'block':'none';
+  document.getElementById('register-form').style.display = tab==='register'?'block':'none';
+  document.getElementById('auth-msg').innerHTML='';
+}
+
+async function doLogin(){
+  const btn = document.getElementById('login-btn');
+  btn.disabled=true; btn.textContent='Signing in…';
+  try{
+    const data = await api('POST','/auth/login',{
+      email: document.getElementById('login-email').value,
+      password: document.getElementById('login-password').value
+    });
+    STATE.token = data.access_token;
+    localStorage.setItem('dh_token', STATE.token);
+    STATE.baseUrl = getBase();
+    localStorage.setItem('dh_base', STATE.baseUrl);
+    await loadUser();
+  }catch(e){
+    showMsg(e.message);
+    btn.disabled=false; btn.textContent='Sign in';
+  }
+}
+
+async function doRegister(){
+  const btn = document.getElementById('reg-btn');
+  btn.disabled=true; btn.textContent='Creating…';
+  try{
+    await api('POST','/auth/register',{
+      full_name: document.getElementById('reg-name').value,
+      email: document.getElementById('reg-email').value,
+      password: document.getElementById('reg-password').value,
+      role: document.getElementById('reg-role').value
+    });
+    showMsg('Account created! Please sign in.','success');
+    switchAuthTab('login');
+  }catch(e){
+    showMsg(e.message);
+  }finally{
+    btn.disabled=false; btn.textContent='Create account';
+  }
+}
+
+async function loadUser(){
+  const user = await api('GET','/auth/me');
+  STATE.user = user;
+  localStorage.setItem('dh_user', JSON.stringify(user));
+  initApp();
+}
+
+function logout(){
+  STATE.token=null; STATE.user=null;
+  localStorage.removeItem('dh_token');
+  localStorage.removeItem('dh_user');
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+
+/* ─── NAV DEFINITIONS ─── */
+const NAV = {
+  ADMIN: [
+    {id:'dashboard', label:'Dashboard', icon:'chart-bar'},
+    {id:'manage-vendors', label:'Vendors', icon:'building-store'},
+    {id:'manage-drivers', label:'Drivers', icon:'car'},
+    {id:'manage-deliveries', label:'Deliveries', icon:'truck'},
+    {id:'reports', label:'Reports', icon:'report-analytics'},
+  ],
+  VENDOR: [
+    {id:'vendor-orders', label:'My Orders', icon:'list-details'},
+    {id:'new-order', label:'New Order', icon:'plus'},
+    {id:'track-order', label:'Track Order', icon:'map-pin'},
+  ],
+  DRIVER: [
+    {id:'my-deliveries', label:'My Deliveries', icon:'truck'},
+  ],
+  CUSTOMER: [
+    {id:'customer-profile', label:'My Profile', icon:'user'},
+    {id:'track-order', label:'Track Order', icon:'map-pin'},
+  ]
+};
+
+const ICONS = {
+  'chart-bar':'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  'building-store':'<path d="M3 9l1-4h16l1 4M3 9h18M3 9v10a1 1 0 001 1h4v-4h8v4h4a1 1 0 001-1V9"/>',
+  'car':'<path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v9a2 2 0 01-2 2h-2m-4 0a2 2 0 10-4 0 2 2 0 004 0m5 0a2 2 0 10-4 0 2 2 0 004 0"/>',
+  'truck':'<path d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+  'report-analytics':'<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>',
+  'list-details':'<path d="M13 5h8M13 9h5M13 15h8M13 19h5M3 4l1 1 2-2M3 10l1 1 2-2M3 16l1 1 2-2"/>',
+  'plus':'<path d="M12 5v14M5 12h14"/>',
+  'map-pin':'<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/>',
+  'user':'<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+};
+
+function navIcon(name){
+  return `<svg viewBox="0 0 24 24">${ICONS[name]||''}</svg>`;
+}
+
+function initApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  const u = STATE.user;
+  document.getElementById('top-user-name').textContent = u.full_name;
+  document.getElementById('top-avatar').textContent = u.full_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('top-role-badge').className = 'role-badge rb-'+u.role;
+  document.getElementById('top-role-badge').textContent = u.role;
+
+  const nav = NAV[u.role]||[];
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = `<div class="nav-section"><div class="nav-section-label">Menu</div>${
+    nav.map(n=>`<button class="nav-item" data-page="${n.id}" onclick="showPage('${n.id}')">${navIcon(n.icon)} ${n.label}</button>`).join('')
+  }</div>`;
+
+  if(nav.length) showPage(nav[0].id);
+}
+
+function showPage(id){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.page===id));
+  const mc = document.getElementById('main-content');
+  mc.innerHTML = `<div id="page-${id}" class="page active"></div>`;
+  const p = document.getElementById('page-'+id);
+  const pages = {
+    dashboard: renderDashboard,
+    'manage-vendors': renderManageVendors,
+    'manage-drivers': renderManageDrivers,
+    'manage-deliveries': renderManageDeliveries,
+    reports: renderReports,
+    'vendor-orders': renderVendorOrders,
+    'new-order': renderNewOrder,
+    'track-order': renderTrackOrder,
+    'my-deliveries': renderMyDeliveries,
+    'customer-profile': renderCustomerProfile,
+  };
+  if(pages[id]) pages[id](p);
+}
+
+/* ─── BADGE HELPER ─── */
+function badge(val){
+  if(!val) return '—';
+  const cls = val.toLowerCase().replace(/[^a-z_]/g,'');
+  return `<span class="badge b-${cls}">${val.replace('_',' ')}</span>`;
+}
+
+/* ─── DASHBOARD ─── */
+async function renderDashboard(el){
+  el.innerHTML = `
+    <div class="page-header"><div><div class="page-title">Dashboard</div><div class="page-sub">System overview</div></div></div>
+    <div class="stats-grid" id="stat-grid"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+    <div id="perf-wrap"></div>`;
+  try{
+    const d = await api('GET','/reports/dashboard');
+    document.getElementById('stat-grid').innerHTML = [
+      {label:'Total orders',val:d.total_orders,c:'purple',icon:'list-details'},
+      {label:'Completed',val:d.completed_orders,c:'green',icon:'chart-bar'},
+      {label:'Cancelled',val:d.cancelled_orders,c:'red',icon:'report-analytics'},
+      {label:'Active deliveries',val:d.active_deliveries,c:'amber',icon:'truck'},
+      {label:'Completed deliveries',val:d.completed_deliveries,c:'teal',icon:'truck'},
+      {label:'Vendors',val:d.total_vendors,c:'blue',icon:'building-store'},
+      {label:'Drivers',val:d.total_drivers,c:'teal',icon:'car'},
+      {label:'Customers',val:d.total_customers,c:'purple',icon:'user'},
+    ].map(s=>`<div class="stat-card">
+      <div class="stat-icon si-${s.c}">${navIcon(s.icon)}</div>
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-value">${s.val}</div>
+    </div>`).join('');
+  }catch(e){
+    document.getElementById('stat-grid').innerHTML=`<div class="msg msg-error">${e.message}</div>`;
+  }
+
+  try{
+    const [vp, dp] = await Promise.all([
+      api('GET','/reports/vendor-performance'),
+      api('GET','/reports/driver-performance')
+    ]);
+    document.getElementById('perf-wrap').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="table-wrap">
+          <div class="table-header"><span class="table-title">Vendor performance</span></div>
+          <table><thead><tr><th>Company</th><th>Orders</th></tr></thead>
+          <tbody>${vp.map(v=>`<tr><td>${v.company_name}</td><td><strong>${v.total_orders}</strong></td></tr>`).join('')||'<tr><td colspan="2" class="empty">No data</td></tr>'}</tbody></table>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><span class="table-title">Driver performance</span></div>
+          <table><thead><tr><th>Vehicle</th><th>Deliveries</th></tr></thead>
+          <tbody>${dp.map(d=>`<tr><td>${d.vehicle_type}</td><td><strong>${d.total_deliveries}</strong></td></tr>`).join('')||'<tr><td colspan="2" class="empty">No data</td></tr>'}</tbody></table>
+        </div>
+      </div>`;
+  }catch(e){}
+}
+
+/* ─── MANAGE VENDORS ─── */
+async function renderManageVendors(el){
+  el.innerHTML=`
+    <div class="page-header">
+      <div><div class="page-title">Vendors</div><div class="page-sub">Manage vendor accounts</div></div>
+      <button class="btn btn-primary" onclick="openAddVendorModal()">+ Add vendor</button>
+    </div>
+    <div id="vendor-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>`;
+  await loadVendorList();
+}
+
+async function loadVendorList(){
+  const wrap = document.getElementById('vendor-list');
+  if(!wrap) return;
+  try{
+    const vendors = await api('GET','/admin/vendors').catch(()=>[]);
+    wrap.innerHTML = `<div class="table-wrap">
+      <table><thead><tr><th>Company</th><th>Phone</th><th>Address</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>${vendors.length?vendors.map(v=>`<tr>
+        <td><strong>${v.company_name}</strong></td>
+        <td>${v.phone||'—'}</td>
+        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.address||'—'}</td>
+        <td>${badge(v.status)}</td>
+        <td>${v.status!=='SUSPENDED'?`<button class="btn btn-sm btn-danger" onclick="suspendVendor(${v.id})">Suspend</button>`:'<span class="badge b-suspended">Suspended</span>'}</td>
+      </tr>`).join(''):'<tr><td colspan="5"><div class="empty">No vendors yet</div></td></tr>'}</tbody>
+      </table></div>`;
+  }catch(e){wrap.innerHTML=`<div class="msg msg-error">${e.message}</div>`}
+}
+
+function openAddVendorModal(){
+  showModal(`<div class="modal">
+    <div class="modal-title">Add vendor</div>
+    <div class="form-group"><label>Company name</label><input id="m-company" type="text" placeholder="Acme Corp"></div>
+    <div class="form-group"><label>User ID</label><input id="m-uid" type="number" placeholder="User ID of the vendor account"></div>
+    <div class="form-group"><label>Phone</label><input id="m-phone" type="text" placeholder="+92 300 0000000"></div>
+    <div class="form-group"><label>Address</label><input id="m-address" type="text" placeholder="City, Country"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitVendor()">Add vendor</button>
+    </div>
+  </div>`);
+}
+
+async function submitVendor(){
+  try{
+    await api('POST','/admin/vendors',{
+      company_name: document.getElementById('m-company').value,
+      user_id: parseInt(document.getElementById('m-uid').value),
+      phone: document.getElementById('m-phone').value,
+      address: document.getElementById('m-address').value,
+    });
+    toast('Vendor added','success');
+    closeModal();
+    await loadVendorList();
+  }catch(e){toast(e.message,'error')}
+}
+
+async function suspendVendor(id){
+  if(!confirm('Suspend this vendor?')) return;
+  try{
+    await api('PATCH',`/vendors/${id}/suspend`);
+    toast('Vendor suspended','success');
+    await loadVendorList();
+  }catch(e){toast(e.message,'error')}
+}
+
+/* ─── MANAGE DRIVERS ─── */
+async function renderManageDrivers(el){
+  el.innerHTML=`
+    <div class="page-header">
+      <div><div class="page-title">Drivers</div><div class="page-sub">Manage driver accounts</div></div>
+      <button class="btn btn-primary" onclick="openAddDriverModal()">+ Add driver</button>
+    </div>
+    <div id="driver-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>`;
+  await loadDriverList();
+}
+
+async function loadDriverList(){
+  const wrap = document.getElementById('driver-list');
+  if(!wrap) return;
+  try{
+    const drivers = await api('GET','/admin/drivers').catch(()=>[]);
+    wrap.innerHTML=`<div class="table-wrap">
+      <table><thead><tr><th>License</th><th>Vehicle</th><th>Availability</th></tr></thead>
+      <tbody>${drivers.length?drivers.map(d=>`<tr>
+        <td>${d.license_number||'—'}</td>
+        <td>${d.vehicle_type||'—'}</td>
+        <td>${badge(d.is_available?'AVAILABLE':'UNAVAILABLE')}</td>
+      </tr>`).join(''):'<tr><td colspan="3"><div class="empty">No drivers yet</div></td></tr>'}</tbody>
+      </table></div>`;
+  }catch(e){wrap.innerHTML=`<div class="msg msg-error">${e.message}</div>`}
+}
+
+function openAddDriverModal(){
+  showModal(`<div class="modal">
+    <div class="modal-title">Add driver</div>
+    <div class="form-group"><label>User ID</label><input id="d-uid" type="number" placeholder="User ID of driver account"></div>
+    <div class="form-group"><label>License number</label><input id="d-lic" type="text" placeholder="DL-12345"></div>
+    <div class="form-group"><label>Vehicle type</label><input id="d-veh" type="text" placeholder="Motorcycle / Van / Truck"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitDriver()">Add driver</button>
+    </div>
+  </div>`);
+}
+
+async function submitDriver(){
+  try{
+    await api('POST','/admin/drivers',{
+      user_id: parseInt(document.getElementById('d-uid').value),
+      license_number: document.getElementById('d-lic').value,
+      vehicle_type: document.getElementById('d-veh').value,
+    });
+    toast('Driver added','success');
+    closeModal();
+    await loadDriverList();
+  }catch(e){toast(e.message,'error')}
+}
+
+/* ─── MANAGE DELIVERIES (ADMIN) ─── */
+async function renderManageDeliveries(el){
+  el.innerHTML=`
+    <div class="page-header">
+      <div><div class="page-title">Deliveries</div><div class="page-sub">Assign and monitor deliveries</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Assign driver to order</div>
+      <div class="form-row">
+        <div class="form-group"><label>Order ID</label><input id="a-order" type="number" placeholder="Order ID"></div>
+        <div class="form-group"><label>Driver ID</label><input id="a-driver" type="number" placeholder="Driver ID"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="assignDelivery()">Assign driver</button>
+        <button class="btn btn-outline" onclick="autoAssign()">Auto-assign</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Check delivery history</div>
+      <div style="display:flex;gap:.75rem;align-items:flex-end">
+        <div class="form-group" style="flex:1;margin:0"><label>Delivery ID</label><input id="h-delivery" type="number" placeholder="Delivery ID"></div>
+        <button class="btn btn-outline" onclick="loadHistory()">View history</button>
+      </div>
+      <div id="history-result" style="margin-top:1rem"></div>
+    </div>`;
+}
+
+async function assignDelivery(){
+  try{
+    const d = await api('POST','/deliveries/assign',{
+      order_id: parseInt(document.getElementById('a-order').value),
+      driver_id: parseInt(document.getElementById('a-driver').value)
+    });
+    toast('Delivery assigned: #'+d.id,'success');
+  }catch(e){toast(e.message,'error')}
+}
+
+async function autoAssign(){
+  const orderId = parseInt(document.getElementById('a-order').value);
+  if(!orderId){ toast('Enter an order ID','error'); return; }
+  try{
+    const d = await api('POST','/deliveries/auto-assign',{order_id:orderId});
+    toast('Auto-assigned delivery #'+d.id,'success');
+  }catch(e){toast(e.message,'error')}
+}
+
+async function loadHistory(){
+  const id = document.getElementById('h-delivery').value;
+  const wrap = document.getElementById('history-result');
+  if(!id){ toast('Enter delivery ID','error'); return; }
+  try{
+    const h = await api('GET',`/deliveries/${id}/history`);
+    const STATUSES = ['ASSIGNED','PICKED_UP','IN_TRANSIT','DELIVERED'];
+    wrap.innerHTML = h.length ? `<div class="timeline">${h.map((item,i)=>`
+      <div class="tl-item">
+        ${i<h.length-1?'<div class="tl-line"></div>':''}
+        <div class="tl-dot done"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="tl-content">
+          <div class="tl-title">${item.status||item.new_status||'Update'}</div>
+          <div class="tl-time">${item.notes||''} &bull; ${item.created_at?new Date(item.created_at).toLocaleString():''}</div>
+        </div>
+      </div>`).join('')}</div>` : '<div class="empty">No history found</div>';
+  }catch(e){wrap.innerHTML=`<div class="msg msg-error">${e.message}</div>`}
+}
+
+/* ─── REPORTS ─── */
+async function renderReports(el){
+  el.innerHTML=`<div class="page-header"><div><div class="page-title">Reports</div><div class="page-sub">Performance analytics</div></div></div>
+    <div id="reports-wrap"><div class="loading"><div class="spinner"></div>Loading…</div></div>`;
+  try{
+    const [vp,dp] = await Promise.all([api('GET','/reports/vendor-performance'),api('GET','/reports/driver-performance')]);
+    document.getElementById('reports-wrap').innerHTML=`
+      <div class="table-wrap" style="margin-bottom:1rem">
+        <div class="table-header"><span class="table-title">Vendor performance</span></div>
+        <table><thead><tr><th>Vendor ID</th><th>Company</th><th>Total orders</th></tr></thead>
+        <tbody>${vp.map(v=>`<tr><td>#${v.vendor_id}</td><td>${v.company_name}</td><td><strong>${v.total_orders}</strong></td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:2rem">No data</td></tr>'}</tbody></table>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title">Driver performance</span></div>
+        <table><thead><tr><th>Driver ID</th><th>Vehicle</th><th>Total deliveries</th></tr></thead>
+        <tbody>${dp.map(d=>`<tr><td>#${d.driver_id}</td><td>${d.vehicle_type}</td><td><strong>${d.total_deliveries}</strong></td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:2rem">No data</td></tr>'}</tbody></table>
+      </div>`;
+  }catch(e){
+    document.getElementById('reports-wrap').innerHTML=`<div class="msg msg-error">${e.message}</div>`;
+  }
+}
+
+/* ─── VENDOR ORDERS ─── */
+async function renderVendorOrders(el){
+  el.innerHTML=`<div class="page-header"><div><div class="page-title">My orders</div><div class="page-sub">All orders for your vendor account</div></div>
+    <button class="btn btn-primary" onclick="showPage('new-order')">+ New order</button></div>
+    <div id="orders-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>`;
+  try{
+    const orders = await api('GET','/orders/my-orders');
+    document.getElementById('orders-list').innerHTML=`<div class="table-wrap">
+      <table><thead><tr><th>Order #</th><th>Amount</th><th>Pickup</th><th>Delivery</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${orders.length?orders.map(o=>`<tr>
+        <td><strong>${o.order_number}</strong></td>
+        <td>£${parseFloat(o.total_amount||0).toFixed(2)}</td>
+        <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.pickup_address||'—'}</td>
+        <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.delivery_address||'—'}</td>
+        <td>${badge(o.status)}</td>
+        <td>${o.status!=='DELIVERED'&&o.status!=='CANCELLED'?`<button class="btn btn-sm btn-danger" onclick="cancelOrder(${o.id})">Cancel</button>`:badge(o.status)}</td>
+      </tr>`).join(''):'<tr><td colspan="6"><div class="empty">No orders yet. Create your first one!</div></td></tr>'}</tbody>
+      </table></div>`;
+  }catch(e){document.getElementById('orders-list').innerHTML=`<div class="msg msg-error">${e.message}</div>`}
+}
+
+async function cancelOrder(id){
+  if(!confirm('Cancel this order?')) return;
+  try{
+    await api('PATCH',`/orders/${id}/cancel`);
+    toast('Order cancelled','success');
+    showPage('vendor-orders');
+  }catch(e){toast(e.message,'error')}
+}
+
+/* ─── NEW ORDER ─── */
+function renderNewOrder(el){
+  el.innerHTML=`
+    <div class="page-header"><div><div class="page-title">New order</div><div class="page-sub">Create an order as vendor</div></div></div>
+    <div class="panel" style="max-width:600px">
+      <div class="panel-title">Order details</div>
+      <div class="form-row">
+        <div class="form-group"><label>Customer ID</label><input id="o-cust" type="number" placeholder="Customer ID"></div>
+        <div class="form-group"><label>Total amount (£)</label><input id="o-amount" type="number" step="0.01" placeholder="0.00"></div>
+      </div>
+      <div class="form-group"><label>Pickup address</label><input id="o-pickup" type="text" placeholder="Warehouse address"></div>
+      <div class="form-group"><label>Delivery address</label><input id="o-delivery" type="text" placeholder="Customer delivery address"></div>
+      <div class="form-actions">
+        <button class="btn btn-outline" onclick="showPage('vendor-orders')">Cancel</button>
+        <button class="btn btn-primary" onclick="createOrder()">Place order</button>
+      </div>
+    </div>`;
+}
+
+async function createOrder(){
+  try{
+    const o = await api('POST','/orders',{
+      customer_id: parseInt(document.getElementById('o-cust').value),
+      total_amount: parseFloat(document.getElementById('o-amount').value)||0,
+      pickup_address: document.getElementById('o-pickup').value,
+      delivery_address: document.getElementById('o-delivery').value,
+    });
+    toast('Order #'+o.order_number+' created','success');
+    showPage('vendor-orders');
+  }catch(e){toast(e.message,'error')}
+}
+
+/* ─── TRACK ORDER ─── */
+function renderTrackOrder(el){
+  el.innerHTML=`
+    <div class="page-header"><div><div class="page-title">Track order</div><div class="page-sub">Live status for any order</div></div></div>
+    <div class="panel" style="max-width:500px">
+      <div style="display:flex;gap:.75rem;align-items:flex-end">
+        <div class="form-group" style="flex:1;margin:0"><label>Order ID</label><input id="t-order" type="number" placeholder="Order ID"></div>
+        <button class="btn btn-primary" onclick="trackOrder()">Track</button>
+      </div>
+    </div>
+    <div id="track-result"></div>`;
+}
+
+async function trackOrder(){
+  const id = document.getElementById('t-order').value;
+  const wrap = document.getElementById('track-result');
+  if(!id){ toast('Enter order ID','error'); return; }
+  wrap.innerHTML='<div class="loading"><div class="spinner"></div>Fetching…</div>';
+  try{
+    const t = await api('GET',`/orders/${id}/tracking`);
+    const steps = ['PENDING','CONFIRMED','ASSIGNED','PICKED_UP','IN_TRANSIT','DELIVERED'];
+    const idx = steps.indexOf(t.order_status);
+    wrap.innerHTML=`
+      <div class="panel" style="max-width:500px">
+        <div class="panel-title">Order #${t.order_number}</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:1.25rem">
+          <div><div style="font-size:12px;color:var(--muted)">Order status</div><div style="margin-top:.25rem">${badge(t.order_status)}</div></div>
+          <div><div style="font-size:12px;color:var(--muted)">Delivery status</div><div style="margin-top:.25rem">${t.delivery_status?badge(t.delivery_status):'<span class="badge b-pending">Not assigned</span>'}</div></div>
+        </div>
+        <div class="timeline">
+          ${steps.map((s,i)=>`<div class="tl-item">
+            ${i<steps.length-1?'<div class="tl-line"></div>':''}
+            <div class="tl-dot ${i<=idx?'done':''}">
+              ${i<=idx?'<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>':'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg>'}
+            </div>
+            <div class="tl-content"><div class="tl-title" style="${i===idx?'color:var(--primary);font-weight:600':i<idx?'':'color:var(--hint)'}">${s.replace('_',' ')}</div></div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  }catch(e){wrap.innerHTML=`<div class="msg msg-error">${e.message}</div>`}
+}
+
+/* ─── MY DELIVERIES (DRIVER) ─── */
+async function renderMyDeliveries(el){
+  el.innerHTML=`
+    <div class="page-header"><div><div class="page-title">My deliveries</div><div class="page-sub">Orders assigned to you</div></div></div>
+    <div id="del-list"><div class="loading"><div class="spinner"></div>Loading…</div></div>`;
+  try{
+    const deliveries = await api('GET','/deliveries/my-deliveries');
+    document.getElementById('del-list').innerHTML=`<div class="table-wrap">
+      <table><thead><tr><th>Delivery ID</th><th>Order ID</th><th>Status</th><th>Notes</th><th>Update status</th></tr></thead>
+      <tbody>${deliveries.length?deliveries.map(d=>`<tr>
+        <td><strong>#${d.id}</strong></td>
+        <td>#${d.order_id}</td>
+        <td>${badge(d.current_status)}</td>
+        <td>${d.notes||'—'}</td>
+        <td><button class="btn btn-sm btn-primary" onclick="openStatusModal(${d.id},'${d.current_status}')">Update</button></td>
+      </tr>`).join(''):'<tr><td colspan="5"><div class="empty">No deliveries assigned to you yet</div></td></tr>'}</tbody>
+      </table></div>`;
+  }catch(e){document.getElementById('del-list').innerHTML=`<div class="msg msg-error">${e.message}</div>`}
+}
+
+function openStatusModal(deliveryId, current){
+  const statuses = ['ASSIGNED','PICKED_UP','IN_TRANSIT','DELIVERED'];
+  showModal(`<div class="modal">
+    <div class="modal-title">Update delivery #${deliveryId}</div>
+    <div class="form-group"><label>New status</label>
+      <select id="s-status">${statuses.map(s=>`<option value="${s}" ${s===current?'selected':''}>${s.replace('_',' ')}</option>`).join('')}</select>
+    </div>
+    <div class="form-group"><label>Notes (optional)</label><input id="s-notes" type="text" placeholder="Add a note…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-success" onclick="submitStatus(${deliveryId})">Save</button>
+    </div>
+  </div>`);
+}
+
+async function submitStatus(id){
+  try{
+    await api('PUT',`/deliveries/${id}/status`,{
+      status: document.getElementById('s-status').value,
+      notes: document.getElementById('s-notes').value||null
+    });
+    toast('Status updated','success');
+    closeModal();
+    showPage('my-deliveries');
+  }catch(e){toast(e.message,'error')}
+}
+
+/* ─── CUSTOMER PROFILE ─── */
+async function renderCustomerProfile(el){
+  el.innerHTML=`
+    <div class="page-header"><div><div class="page-title">My profile</div><div class="page-sub">Customer information</div></div></div>
+    <div id="cust-content"><div class="loading"><div class="spinner"></div>Loading…</div></div>`;
+  try{
+    const c = await api('GET','/customers/me');
+    document.getElementById('cust-content').innerHTML=`
+      <div class="panel" style="max-width:500px">
+        <div class="panel-title">Profile details</div>
+        <table style="width:100%">
+          <tr><td style="color:var(--muted);padding:.5rem 0;width:120px">Phone</td><td style="padding:.5rem 0">${c.phone||'—'}</td></tr>
+          <tr><td style="color:var(--muted);padding:.5rem 0">Address</td><td style="padding:.5rem 0">${c.address||'—'}</td></tr>
+          <tr><td style="color:var(--muted);padding:.5rem 0">Customer ID</td><td style="padding:.5rem 0">#${c.id}</td></tr>
+        </table>
+      </div>`;
+  }catch(e){
+    if(e.message.includes('not found')){
+      document.getElementById('cust-content').innerHTML=`
+        <div class="panel" style="max-width:500px">
+          <div class="panel-title">Create customer profile</div>
+          <div class="alert alert-info" style="margin-bottom:1rem">You don't have a profile yet. Fill in your details below.</div>
+          <div class="form-group"><label>Phone</label><input id="cp-phone" type="text" placeholder="+92 300 0000000"></div>
+          <div class="form-group"><label>Address</label><input id="cp-addr" type="text" placeholder="Your delivery address"></div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="createCustomerProfile()">Save profile</button>
+          </div>
+        </div>`;
+    }else{
+      document.getElementById('cust-content').innerHTML=`<div class="msg msg-error">${e.message}</div>`;
+    }
+  }
+}
+
+async function createCustomerProfile(){
+  try{
+    await api('POST','/customers/profile',{
+      phone: document.getElementById('cp-phone').value,
+      address: document.getElementById('cp-addr').value
+    });
+    toast('Profile created','success');
+    showPage('customer-profile');
+  }catch(e){toast(e.message,'error')}
+}
+
+/* ─── MODAL HELPERS ─── */
+function showModal(html){
+  const mc = document.getElementById('modal-container');
+  mc.innerHTML=`<div class="modal-backdrop" onclick="closeModal()">${html}</div>`;
+  mc.querySelector('.modal').addEventListener('click',e=>e.stopPropagation());
+}
+function closeModal(){
+  document.getElementById('modal-container').innerHTML='';
+}
+
+/* ─── INIT ─── */
+if(STATE.token && STATE.user){
+  initApp();
+}
+</script>
+</body>
+</html>
