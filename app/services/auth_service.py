@@ -6,6 +6,64 @@ from app.schemas.auth import RegisterRequest, LoginRequest
 from app.core.security import hash_password, verify_password, create_access_token
 
 
+def validate_strong_password(password: str):
+    if not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is required"
+        )
+
+    if len(password) < 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 10 characters long"
+        )
+
+    if any(ch.isspace() for ch in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must not contain spaces"
+        )
+
+    if not any(ch.isupper() for ch in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one uppercase letter"
+        )
+
+    if not any(ch.islower() for ch in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one lowercase letter"
+        )
+
+    if not any(ch.isdigit() for ch in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one number"
+        )
+
+    special_chars = "@$!%*?&#_-"
+    if not any(ch in special_chars for ch in password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one special character (@$!%*?&#_-)"
+        )
+
+    weak_passwords = {
+        "123456", "12345678", "123456789", "password", "password123",
+        "admin123", "admin@123", "qwerty123", "abc123456"
+    }
+
+    if password.lower() in weak_passwords:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is too common. Please choose a stronger password"
+        )
+
+    return True
+
+
 def register_user(db: Session, request: RegisterRequest):
     existing_user = db.query(User).filter(User.email == request.email).first()
 
@@ -14,6 +72,8 @@ def register_user(db: Session, request: RegisterRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
+
+    validate_strong_password(request.password)
 
     new_user = User(
         full_name=request.full_name,

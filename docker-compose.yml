@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:17
+    container_name: delivery_db
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: delivery_tracking_db
+
+    ports:
+      - "5433:5432"
+
+  backend:
+    build: .
+    container_name: delivery_backend
+
+    depends_on:
+      - db
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DATABASE_URL: postgresql://postgres:123456@db:5432/delivery_tracking_db

@@ -19,6 +19,8 @@ function Settings() {
   const [profileMsg, setProfileMsg] = useState("");
   const [passwordMsg, setPasswordMsg] = useState("");
 
+  const strongPasswordRegex = /^(?=.{10,}$)(?!.*\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_-]).*$/;
+
   const saveProfile = async (e) => {
     e.preventDefault();
 
@@ -40,6 +42,11 @@ function Settings() {
 
     if (passwordForm.new_password !== passwordForm.confirm_password) {
       setPasswordMsg("Passwords do not match.");
+      return;
+    }
+
+    if (!strongPasswordRegex.test(passwordForm.new_password)) {
+      setPasswordMsg("New password must be 10+ chars, no spaces, uppercase, lowercase, number and special character (@$!%*?&#_-).");
       return;
     }
 

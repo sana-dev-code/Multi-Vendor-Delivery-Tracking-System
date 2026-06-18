@@ -24,6 +24,7 @@ function Login() {
 
     localStorage.setItem("user", JSON.stringify(user));
 
+
     if (user.role === "ADMIN") navigate("/admin");
     else if (user.role === "VENDOR") navigate("/vendor");
     else if (user.role === "DRIVER") navigate("/driver");
@@ -58,15 +59,23 @@ function Login() {
           <label className="text-sm text-slate-600">Password</label>
           <input
             type="password"
-            className="w-full border rounded-lg p-3 mb-6 mt-1"
+            className="w-full border rounded-lg p-3 mb-2 mt-1"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
 
+          <div className="text-right mb-6">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-blue-600 font-semibold hover:underline"
+            >
+              Forgot Password?
+            </Link>
+          </div>
+
           <button className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-semibold">
             Login
-          </button>
-        </form>
+          </button>        </form>
 
         <div className="text-xs text-slate-500 mt-6 space-y-1">
           <p>Admin: sana@test.com / 123456</p>

@@ -11,8 +11,15 @@ function Register() {
     password: "",
   });
 
+  const strongPasswordRegex = /^(?=.{10,}$)(?!.*\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_-]).*$/;
+
   const handleRegister = async (e) => {
     e.preventDefault();
+
+    if (!strongPasswordRegex.test(form.password)) {
+      alert("Customer password must be 10+ chars, no spaces, uppercase, lowercase, number and special character (@$!%*?&#_-).");
+      return;
+    }
 
     try {
       await api.post("/auth/register", {
@@ -56,7 +63,7 @@ function Register() {
 
           <input
             className="w-full border p-3 rounded-xl"
-            placeholder="Password"
+            placeholder="Strong Password e.g. Sana@12345"
             type="password"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}

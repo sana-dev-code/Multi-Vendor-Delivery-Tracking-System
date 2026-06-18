@@ -14,7 +14,7 @@ function AdminDashboard() {
   const [vendorForm, setVendorForm] = useState({
     full_name: "",
     email: "",
-    password: "123456",
+    password: "",
     company_name: "",
     phone: "",
     address: "",
@@ -23,7 +23,7 @@ function AdminDashboard() {
   const [driverForm, setDriverForm] = useState({
     full_name: "",
     email: "",
-    password: "123456",
+    password: "",
     license_number: "",
     vehicle_type: "",
   });
@@ -59,30 +59,52 @@ function AdminDashboard() {
     navigate("/");
   };
 
+  const strongPasswordRegex = /^(?=.{10,}$)(?!.*\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_-]).*$/;
+  const phoneRegex = /^03\d{9}$/;
+  const licenseRegex = /^[A-Za-z0-9-]{4,20}$/;
+  const nameRegex = /^[A-Za-z ]{3,50}$/;
+
+  const onlyDigits = (value, maxLength = 11) => value.replace(/\D/g, "").slice(0, maxLength);
+  const onlyName = (value) => value.replace(/[^A-Za-z ]/g, "").slice(0, 50);
+  const onlyLicense = (value) => value.replace(/[^A-Za-z0-9-]/g, "").slice(0, 20).toUpperCase();
+
   const createVendor = async (e) => {
     e.preventDefault();
 
+    if (!nameRegex.test(vendorForm.full_name.trim())) {
+      showNotice("error", "Vendor full name should contain only alphabets and spaces, minimum 3 characters.");
+      return;
+    }
+
+    if (!phoneRegex.test(vendorForm.phone)) {
+      showNotice("error", "Vendor phone number must be exactly 11 digits and start with 03, e.g. 03001234567.");
+      return;
+    }
+
+    if (!strongPasswordRegex.test(vendorForm.password)) {
+      showNotice(
+        "error",
+        "Vendor password must be 10+ chars, no spaces, uppercase, lowercase, number and special character (@$!%*?&#_-)."
+      );
+      return;
+    }
+
     try {
-      const userRes = await api.post("/auth/register", {
+      await api.post("/admin/vendors", {
         full_name: vendorForm.full_name,
         email: vendorForm.email,
         password: vendorForm.password,
-        role: "VENDOR",
-      });
-
-      await api.post("/admin/vendors", {
-        user_id: userRes.data.id,
         company_name: vendorForm.company_name,
         phone: vendorForm.phone,
         address: vendorForm.address,
       });
 
-      showNotice("success", "Vendor created successfully.");
+      showNotice("success", "Vendor account created successfully.");
 
       setVendorForm({
         full_name: "",
         email: "",
-        password: "123456",
+        password: "",
         company_name: "",
         phone: "",
         address: "",
@@ -98,26 +120,44 @@ function AdminDashboard() {
   const createDriver = async (e) => {
     e.preventDefault();
 
+    if (!nameRegex.test(driverForm.full_name.trim())) {
+      showNotice("error", "Driver full name should contain only alphabets and spaces, minimum 3 characters.");
+      return;
+    }
+
+    if (!licenseRegex.test(driverForm.license_number)) {
+      showNotice("error", "License number must be 4-20 characters and only letters, numbers or hyphen.");
+      return;
+    }
+
+    if (!driverForm.vehicle_type.trim()) {
+      showNotice("error", "Vehicle type is required.");
+      return;
+    }
+
+    if (!strongPasswordRegex.test(driverForm.password)) {
+      showNotice(
+        "error",
+        "Driver password must be 10+ chars, no spaces, uppercase, lowercase, number and special character (@$!%*?&#_-)."
+      );
+      return;
+    }
+
     try {
-      const userRes = await api.post("/auth/register", {
+      await api.post("/admin/drivers", {
         full_name: driverForm.full_name,
         email: driverForm.email,
         password: driverForm.password,
-        role: "DRIVER",
-      });
-
-      await api.post("/admin/drivers", {
-        user_id: userRes.data.id,
         license_number: driverForm.license_number,
         vehicle_type: driverForm.vehicle_type,
       });
 
-      showNotice("success", "Driver created successfully.");
+      showNotice("success", "Driver account created successfully.");
 
       setDriverForm({
         full_name: "",
         email: "",
-        password: "123456",
+        password: "",
         license_number: "",
         vehicle_type: "",
       });
@@ -196,15 +236,70 @@ function AdminDashboard() {
         <form onSubmit={createVendor} className="bg-white rounded-2xl shadow p-6">
           <h2 className="text-xl font-bold mb-4">➕ Create Vendor</h2>
 
-          {["full_name", "email", "company_name", "phone", "address"].map((field) => (
-            <input
-              key={field}
-              className="w-full border p-3 rounded-lg mb-3"
-              placeholder={field.replace("_", " ").toUpperCase()}
-              value={vendorForm[field]}
-              onChange={(e) => setVendorForm({ ...vendorForm, [field]: e.target.value })}
-            />
-          ))}
+          <input
+            type="text"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="FULL NAME"
+            value={vendorForm.full_name}
+            onChange={(e) => setVendorForm({ ...vendorForm, full_name: onlyName(e.target.value) })}
+            minLength={3}
+            maxLength={50}
+            required
+          />
+
+          <input
+            type="email"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="EMAIL"
+            value={vendorForm.email}
+            onChange={(e) => setVendorForm({ ...vendorForm, email: e.target.value.trim() })}
+            required
+          />
+
+          <input
+            type="password"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="STRONG PASSWORD e.g. Sana@12345"
+            value={vendorForm.password}
+            onChange={(e) => setVendorForm({ ...vendorForm, password: e.target.value })}
+            minLength={10}
+            required
+          />
+
+          <input
+            type="text"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="COMPANY NAME"
+            value={vendorForm.company_name}
+            onChange={(e) => setVendorForm({ ...vendorForm, company_name: e.target.value.slice(0, 80) })}
+            maxLength={80}
+            required
+          />
+
+          <input
+            type="tel"
+            inputMode="numeric"
+            pattern="03[0-9]{9}"
+            maxLength={11}
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="PHONE e.g. 03001234567"
+            value={vendorForm.phone}
+            onChange={(e) => setVendorForm({ ...vendorForm, phone: onlyDigits(e.target.value, 11) })}
+            required
+          />
+
+          <input
+            type="text"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="ADDRESS"
+            value={vendorForm.address}
+            onChange={(e) => setVendorForm({ ...vendorForm, address: e.target.value.slice(0, 150) })}
+            maxLength={150}
+            required
+          />
+          <p className="text-xs text-slate-500 mb-3">
+            Password must contain uppercase, lowercase, number, special character and minimum 10 characters.
+          </p>
 
           <button className="w-full bg-blue-700 text-white py-3 rounded-lg font-semibold">
             Create Vendor
@@ -214,15 +309,59 @@ function AdminDashboard() {
         <form onSubmit={createDriver} className="bg-white rounded-2xl shadow p-6">
           <h2 className="text-xl font-bold mb-4">🚚 Create Driver</h2>
 
-          {["full_name", "email", "license_number", "vehicle_type"].map((field) => (
-            <input
-              key={field}
-              className="w-full border p-3 rounded-lg mb-3"
-              placeholder={field.replace("_", " ").toUpperCase()}
-              value={driverForm[field]}
-              onChange={(e) => setDriverForm({ ...driverForm, [field]: e.target.value })}
-            />
-          ))}
+          <input
+            type="text"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="FULL NAME"
+            value={driverForm.full_name}
+            onChange={(e) => setDriverForm({ ...driverForm, full_name: onlyName(e.target.value) })}
+            minLength={3}
+            maxLength={50}
+            required
+          />
+
+          <input
+            type="email"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="EMAIL"
+            value={driverForm.email}
+            onChange={(e) => setDriverForm({ ...driverForm, email: e.target.value.trim() })}
+            required
+          />
+
+          <input
+            type="password"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="STRONG PASSWORD e.g. Sana@12345"
+            value={driverForm.password}
+            onChange={(e) => setDriverForm({ ...driverForm, password: e.target.value })}
+            minLength={10}
+            required
+          />
+
+          <input
+            type="text"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="LICENSE NUMBER e.g. LEA-12345"
+            value={driverForm.license_number}
+            onChange={(e) => setDriverForm({ ...driverForm, license_number: onlyLicense(e.target.value) })}
+            minLength={4}
+            maxLength={20}
+            required
+          />
+
+          <input
+            type="text"
+            className="w-full border p-3 rounded-lg mb-3"
+            placeholder="VEHICLE TYPE e.g. Bike"
+            value={driverForm.vehicle_type}
+            onChange={(e) => setDriverForm({ ...driverForm, vehicle_type: e.target.value.slice(0, 40) })}
+            maxLength={40}
+            required
+          />
+          <p className="text-xs text-slate-500 mb-3">
+            Password must contain uppercase, lowercase, number, special character and minimum 10 characters.
+          </p>
 
           <button className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold">
             Create Driver

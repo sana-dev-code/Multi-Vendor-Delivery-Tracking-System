@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.core.dependencies import get_current_user
 from app.db.database import get_db
 from app.core.dependencies import get_current_admin, get_current_driver
@@ -62,8 +62,21 @@ def update_status(
 @router.get("/{delivery_id}/history")
 def get_delivery_history(
     delivery_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
+    delivery = db.query(Delivery).filter(Delivery.id == delivery_id).first()
+
+    if not delivery:
+        raise HTTPException(status_code=404, detail="Delivery not found")
+
+    if current_user.role == "DRIVER":
+        driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+        if not driver or delivery.driver_id != driver.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    elif current_user.role not in ["ADMIN", "VENDOR"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     history = db.query(DeliveryHistory).filter(
         DeliveryHistory.delivery_id == delivery_id
     ).order_by(
@@ -83,16 +96,17 @@ def my_deliveries(
     if not driver:
         raise HTTPException(status_code=404, detail="Driver profile not found")
 
-    deliveries = db.query(Delivery).filter(
-        Delivery.driver_id == driver.id
-    ).all()
+    deliveries = (
+        db.query(Delivery)
+        .options(joinedload(Delivery.order))
+        .filter(Delivery.driver_id == driver.id)
+        .all()
+    )
 
     result = []
 
     for delivery in deliveries:
-        order = db.query(Order).filter(
-            Order.id == delivery.order_id
-        ).first()
+        order = delivery.order
 
         result.append({
             "id": delivery.id,

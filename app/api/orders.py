@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.vendor import Vendor
 from app.models.order import Order, OrderStatus
 from app.models.delivery import Delivery
+from app.models.driver import Driver
 from app.schemas.order import (
     OrderCreate,
     OrderResponse
@@ -30,10 +31,7 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "",
-    response_model=OrderResponse
-)
+@router.post("", response_model=OrderResponse)
 def create_new_order(
     request: OrderCreate,
     db: Session = Depends(get_db),
@@ -42,6 +40,15 @@ def create_new_order(
     vendor = db.query(Vendor).filter(
         Vendor.user_id == current_user.id
     ).first()
+
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor profile not found")
+
+    if vendor.status != "ACTIVE":
+        raise HTTPException(
+            status_code=403,
+            detail="Your vendor account is suspended. You cannot create orders."
+        )
 
     order = create_order(
         db=db,
@@ -86,27 +93,36 @@ def track_order(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    order = db.query(Order).filter(
-        Order.id == order_id
-    ).first()
+    order = db.query(Order).filter(Order.id == order_id).first()
 
     if not order:
-        raise HTTPException(
-            status_code=404,
-            detail="Order not found"
-        )
+        raise HTTPException(status_code=404, detail="Order not found")
 
-    delivery = db.query(Delivery).filter(
-        Delivery.order_id == order.id
-    ).first()
+    delivery = db.query(Delivery).filter(Delivery.order_id == order.id).first()
+
+    if current_user.role == "VENDOR":
+        vendor = db.query(Vendor).filter(Vendor.user_id == current_user.id).first()
+        if not vendor or order.vendor_id != vendor.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    elif current_user.role == "CUSTOMER":
+        customer = db.query(Customer).filter(Customer.user_id == current_user.id).first()
+        if not customer or order.customer_id != customer.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    elif current_user.role == "DRIVER":
+        driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+        if not driver or not delivery or delivery.driver_id != driver.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    elif current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Access denied")
 
     return {
         "order_id": order.id,
         "order_number": order.order_number,
         "order_status": order.status,
-        "delivery_status": (
-            delivery.current_status if delivery else None
-        )
+        "delivery_status": delivery.current_status if delivery else None
     }
 @router.patch("/{order_id}/cancel")
 def cancel_order(
@@ -114,8 +130,13 @@ def cancel_order(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_vendor)
 ):
+    vendor = db.query(Vendor).filter(Vendor.user_id == current_user.id).first()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor profile not found")
+
     order = db.query(Order).filter(
-        Order.id == order_id
+        Order.id == order_id,
+        Order.vendor_id == vendor.id
     ).first()
 
     if not order:

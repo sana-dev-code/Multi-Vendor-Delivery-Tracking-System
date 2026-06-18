@@ -40,7 +40,10 @@ function VendorDashboard() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [orders, setOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [vendorProfile, setVendorProfile] = useState(null);
+  const isVendorSuspended =
+  vendorProfile?.status === "SUSPENDED";
   const [activeTab, setActiveTab] = useState("orders");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -54,6 +57,26 @@ function VendorDashboard() {
   const [trackErr, setTrackErr] = useState("");
 
   const [notice, setNotice] = useState(null);
+
+  
+  const onlyAmount = (value) => value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1").slice(0, 12);
+
+  const getCustomerLabel = (customer) => {
+    const name =
+      customer.full_name ||
+      customer.name ||
+      customer.user?.full_name ||
+      "Customer";
+
+    const email =
+      customer.email ||
+      customer.user?.email ||
+      "";
+
+    const phone = customer.phone ? ` | ${customer.phone}` : "";
+
+    return `${name}${email ? ` (${email})` : ""}${phone} - ID #${customer.id}`;
+  };
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedCancelOrderId, setSelectedCancelOrderId] = useState(null);
 
@@ -80,42 +103,83 @@ function VendorDashboard() {
     }
   };
 
+  const loadCustomers = async () => {
+    try {
+      const res = await api.get("/customers");
+      setCustomers(res.data);
+    } catch (err) {
+      console.error(err);
+      showNotice("error", "Customers load nahi ho sake.");
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       await loadOrders();
       await loadVendorProfile();
+      await loadCustomers();
     };
 
     fetchData();
-  }, []);
+  }, // eslint-disable-next-line react-hooks/exhaustive-deps
+  []);
 
-  const createOrder = async (e) => {
-    e.preventDefault();
-    setCreating(true);
-    setFormMsg({ text: "", type: "" });
+const createOrder = async (e) => {
+  e.preventDefault();
 
-    try {
-      await api.post("/orders", {
-        customer_id: Number(form.customer_id),
-        total_amount: parseFloat(form.total_amount),
-        pickup_address: form.pickup_address,
-        delivery_address: form.delivery_address,
-      });
+  if (isVendorSuspended) {
+    setFormMsg({
+      text: "❌ Your vendor account is suspended. You cannot create orders.",
+      type: "error",
+    });
+    return;
+  }
 
-      setFormMsg({ text: "✅ Order created successfully!", type: "success" });
-      showNotice("success", "Order created successfully.");
-      setForm(EMPTY_FORM);
-      await loadOrders();
-    } catch (err) {
-      console.error(err);
-      setFormMsg({ text: "❌ Failed to create order. Check all fields.", type: "error" });
-      showNotice("error", err.response?.data?.detail || "Failed to create order.");
-    } finally {
-      setCreating(false);
-    }
-  };
+  setCreating(true);
+  setFormMsg({ text: "", type: "" });
 
-  const openCancelModal = (id) => {
+  if (!form.customer_id || Number(form.customer_id) <= 0) {
+    setFormMsg({ text: "❌ Please select a valid customer.", type: "error" });
+    setCreating(false);
+    return;
+  }
+
+  if (!form.total_amount || Number(form.total_amount) <= 0) {
+    setFormMsg({
+      text: "❌ Total amount must be a valid positive number.",
+      type: "error",
+    });
+    setCreating(false);
+    return;
+  }
+
+  try {
+    await api.post("/orders", {
+      customer_id: Number(form.customer_id),
+      total_amount: parseFloat(form.total_amount),
+      pickup_address: form.pickup_address,
+      delivery_address: form.delivery_address,
+    });
+
+    setFormMsg({ text: "✅ Order created successfully!", type: "success" });
+    showNotice("success", "Order created successfully.");
+    setForm(EMPTY_FORM);
+    await loadOrders();
+  } catch (err) {
+    console.error(err);
+    setFormMsg({
+      text: "❌ Failed to create order. Check all fields.",
+      type: "error",
+    });
+    showNotice("error", err.response?.data?.detail || "Failed to create order.");
+  } finally {
+    setCreating(false);
+  }
+};
+
+
+
+const openCancelModal = (id) => {
     setSelectedCancelOrderId(id);
     setShowCancelModal(true);
   };
@@ -409,23 +473,35 @@ function VendorDashboard() {
             </p>
 
             <form onSubmit={createOrder} className="space-y-4">
-              <input
+              <select
                 required
-                type="number"
-                className="w-full border p-3 rounded-xl"
-                placeholder="Customer ID"
+                className="w-full border p-3 rounded-xl bg-white"
                 value={form.customer_id}
                 onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
-              />
+              >
+                <option value="">Select Customer</option>
+
+                {customers.length === 0 ? (
+                  <option value="" disabled>
+                    No customers found
+                  </option>
+                ) : (
+                  customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {getCustomerLabel(customer)}
+                    </option>
+                  ))
+                )}
+              </select>
 
               <input
                 required
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 className="w-full border p-3 rounded-xl"
                 placeholder="Total Amount"
                 value={form.total_amount}
-                onChange={(e) => setForm({ ...form, total_amount: e.target.value })}
+                onChange={(e) => setForm({ ...form, total_amount: onlyAmount(e.target.value) })}
               />
 
               <textarea
@@ -459,12 +535,16 @@ function VendorDashboard() {
               )}
 
               <button
-                type="submit"
-                disabled={creating}
-                className="w-full bg-indigo-700 text-white py-3 rounded-xl font-semibold"
-              >
-                {creating ? "Creating..." : "Place Order"}
-              </button>
+                  type="submit"
+                  disabled={creating || isVendorSuspended}
+                  className="w-full bg-indigo-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isVendorSuspended
+                    ? "Account Suspended"
+                    : creating
+                    ? "Creating..."
+                    : "Place Order"}
+                </button>
             </form>
           </div>
         )}
