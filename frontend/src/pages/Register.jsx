@@ -1,89 +1,38 @@
+/* Customer registration page. */
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { FiArrowRight, FiLock, FiMail, FiUser, FiUserPlus } from "react-icons/fi";
 import api from "../services/api";
+import AuthLayout from "../components/common/AuthLayout";
+import FormInput from "../components/common/FormInput";
 
 function Register() {
   const navigate = useNavigate();
+  const [form, setForm] = useState({ full_name: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState({ type: "", text: "" });
+  const strong = /^(?=.{10,}$)(?!.*\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_-]).*$/;
 
-  const [form, setForm] = useState({
-    full_name: "",
-    email: "",
-    password: "",
-  });
-
-  const strongPasswordRegex = /^(?=.{10,}$)(?!.*\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_-]).*$/;
-
-  const handleRegister = async (e) => {
-    e.preventDefault();
-
-    if (!strongPasswordRegex.test(form.password)) {
-      alert("Customer password must be 10+ chars, no spaces, uppercase, lowercase, number and special character (@$!%*?&#_-).");
-      return;
-    }
-
-    try {
-      await api.post("/auth/register", {
-        ...form,
-        role: "CUSTOMER",
-      });
-
-      alert("Customer account created successfully.");
-      navigate("/");
-    } catch (err) {
-      console.error(err);
-      alert("Registration failed.");
-    }
+  const submit = async (e) => {
+    e.preventDefault(); setMsg({ type: "", text: "" });
+    if (!strong.test(form.password)) return setMsg({ type: "error", text: "Password must be 10+ characters with uppercase, lowercase, number, and special character." });
+    try { setLoading(true); await api.post("/auth/register", { ...form, role: "CUSTOMER" }); setMsg({ type: "success", text: "Account created. Redirecting..." }); setTimeout(() => navigate("/"), 900); }
+    catch (err) { setMsg({ type: "error", text: err.response?.data?.detail || "Registration failed." }); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-      <div className="bg-white w-[430px] rounded-3xl shadow-xl p-8">
-        <h1 className="text-3xl font-bold text-center mb-2">Customer Register</h1>
-        <p className="text-center text-slate-500 mb-6">
-          Create customer account to track deliveries
-        </p>
-
-        <form onSubmit={handleRegister} className="space-y-4">
-          <input
-            className="w-full border p-3 rounded-xl"
-            placeholder="Full Name"
-            value={form.full_name}
-            onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-            required
-          />
-
-          <input
-            className="w-full border p-3 rounded-xl"
-            placeholder="Email"
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            required
-          />
-
-          <input
-            className="w-full border p-3 rounded-xl"
-            placeholder="Strong Password e.g. Sana@12345"
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            required
-          />
-
-          <button className="w-full bg-blue-700 text-white py-3 rounded-xl font-semibold">
-            Register as Customer
-          </button>
-        </form>
-
-        <p className="text-center text-sm text-slate-500 mt-5">
-          Already have an account?{" "}
-          <Link to="/" className="text-blue-600 font-semibold">
-            Login
-          </Link>
-        </p>
-      </div>
-    </div>
+    <AuthLayout title="Customer Register" subtitle="Create customer account to track deliveries" icon={FiUserPlus}>
+      {msg.text && <div className={`mb-4 rounded-xl border p-3 text-sm ${msg.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{msg.text}</div>}
+      <form onSubmit={submit} className="space-y-5">
+        <FormInput label="Full Name" icon={FiUser} required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+        <FormInput label="Email" icon={FiMail} type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        <FormInput label="Password" icon={FiLock} type="password" required placeholder="Sana@12345" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+        <p className="text-[11px] text-slate-500">Must include uppercase, lowercase, number, special character, and minimum 10 characters.</p>
+        <button disabled={loading} className="w-full h-12 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold flex items-center justify-center gap-2">{loading ? "Creating..." : <>Register <FiArrowRight /></>}</button>
+      </form>
+      <p className="text-center text-sm text-slate-600 mt-7">Already have an account? <Link to="/" className="text-purple-700 font-bold">Login</Link></p>
+    </AuthLayout>
   );
 }
-
 export default Register;

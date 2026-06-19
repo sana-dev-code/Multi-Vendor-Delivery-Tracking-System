@@ -1,181 +1,31 @@
+/* Settings page with profile and password forms. */
 import Layout from "../components/Layout";
-import { useState } from "react";
-import api from "../services/api";
+import FormInput from "../components/common/FormInput";
+import PageHeader from "../components/common/PageHeader";
+import { useSettings } from "../hooks/useSettings";
 
 function Settings() {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-  const [profileForm, setProfileForm] = useState({
-    full_name: user.full_name || "",
-    email: user.email || "",
-  });
-
-  const [passwordForm, setPasswordForm] = useState({
-    current_password: "",
-    new_password: "",
-    confirm_password: "",
-  });
-
-  const [profileMsg, setProfileMsg] = useState("");
-  const [passwordMsg, setPasswordMsg] = useState("");
-
-  const strongPasswordRegex = /^(?=.{10,}$)(?!.*\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#_-]).*$/;
-
-  const saveProfile = async (e) => {
-    e.preventDefault();
-
-    const updated = { ...user, ...profileForm };
-    localStorage.setItem("user", JSON.stringify(updated));
-
-    setProfileMsg("Profile saved locally.");
-  };
-
-  const changePassword = async (e) => {
-    e.preventDefault();
-
-    setPasswordMsg("");
-
-    if (!passwordForm.current_password || !passwordForm.new_password) {
-      setPasswordMsg("Please fill all password fields.");
-      return;
-    }
-
-    if (passwordForm.new_password !== passwordForm.confirm_password) {
-      setPasswordMsg("Passwords do not match.");
-      return;
-    }
-
-    if (!strongPasswordRegex.test(passwordForm.new_password)) {
-      setPasswordMsg("New password must be 10+ chars, no spaces, uppercase, lowercase, number and special character (@$!%*?&#_-).");
-      return;
-    }
-
-    try {
-      await api.post("/auth/change-password", {
-        current_password: passwordForm.current_password,
-        new_password: passwordForm.new_password,
-      });
-
-      setPasswordMsg("Password changed successfully.");
-      setPasswordForm({
-        current_password: "",
-        new_password: "",
-        confirm_password: "",
-      });
-    } catch (err) {
-      console.error(err);
-      setPasswordMsg(
-        err.response?.data?.detail || "Failed to change password."
-      );
-    }
-  };
+  const s = useSettings();
 
   return (
     <Layout title="Settings">
-      <div className="bg-white rounded-3xl shadow p-8 mb-6">
-        <h1 className="text-4xl font-bold">Settings</h1>
-        <p className="text-slate-500 mt-2">
-          Manage your account and preferences
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6 mb-6">
-        <form onSubmit={saveProfile} className="bg-white rounded-2xl shadow p-6">
-          <h2 className="text-xl font-bold mb-4">👤 Profile Information</h2>
-
-          <div className="mb-4 p-4 bg-slate-50 rounded-xl">
-            <p className="text-sm text-slate-500">Role</p>
-            <p className="font-bold text-lg">{user.role || "—"}</p>
-          </div>
-
-          <label className="text-sm text-slate-600 block mb-1">Full Name</label>
-          <input
-            className="w-full border p-3 rounded-lg mb-4"
-            value={profileForm.full_name}
-            onChange={(e) =>
-              setProfileForm({ ...profileForm, full_name: e.target.value })
-            }
-          />
-
-          <label className="text-sm text-slate-600 block mb-1">Email</label>
-          <input
-            className="w-full border p-3 rounded-lg mb-4"
-            value={profileForm.email}
-            onChange={(e) =>
-              setProfileForm({ ...profileForm, email: e.target.value })
-            }
-          />
-
-          {profileMsg && (
-            <p className="text-sm text-green-600 mb-3">{profileMsg}</p>
-          )}
-
-          <button
-            type="submit"
-            className="w-full bg-blue-700 text-white py-3 rounded-lg font-semibold"
-          >
-            Save Profile
-          </button>
+      <PageHeader title="Settings" subtitle="Manage your account and preferences" />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <form onSubmit={s.saveProfile} className="bg-white rounded-3xl shadow-sm border p-6">
+          <h2 className="text-xl font-bold mb-4">Profile Information</h2>
+          <div className="mb-4 p-4 bg-slate-50 rounded-xl"><p className="text-sm text-slate-500">Role</p><p className="font-bold text-lg">{s.user.role || "—"}</p></div>
+          <div className="space-y-4"><FormInput label="Full Name" value={s.profileForm.full_name} onChange={(e) => s.setProfileForm({ ...s.profileForm, full_name: e.target.value })} /><FormInput label="Email" value={s.profileForm.email} onChange={(e) => s.setProfileForm({ ...s.profileForm, email: e.target.value })} /></div>
+          {s.profileMsg && <p className="text-sm text-green-600 mt-3">{s.profileMsg}</p>}
+          <button className="w-full mt-5 bg-blue-700 text-white py-3 rounded-xl font-semibold">Save Profile</button>
         </form>
-
-        <form onSubmit={changePassword} className="bg-white rounded-2xl shadow p-6">
-          <h2 className="text-xl font-bold mb-4">🔒 Change Password</h2>
-
-          {["current_password", "new_password", "confirm_password"].map((field) => (
-            <div key={field} className="mb-4">
-              <label className="text-sm text-slate-600 block mb-1">
-                {field.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-              </label>
-              <input
-                type="password"
-                className="w-full border p-3 rounded-lg"
-                value={passwordForm[field]}
-                onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, [field]: e.target.value })
-                }
-              />
-            </div>
-          ))}
-
-          {passwordMsg && (
-            <p
-              className={`text-sm mb-3 ${
-                passwordMsg.includes("successfully")
-                  ? "text-green-600"
-                  : "text-red-600"
-              }`}
-            >
-              {passwordMsg}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            className="w-full bg-indigo-700 text-white py-3 rounded-lg font-semibold"
-          >
-            Change Password
-          </button>
+        <form onSubmit={s.changePassword} className="bg-white rounded-3xl shadow-sm border p-6">
+          <h2 className="text-xl font-bold mb-4">Change Password</h2>
+          <div className="space-y-4"><FormInput label="Current Password" type="password" value={s.passwordForm.current_password} onChange={(e) => s.setPasswordForm({ ...s.passwordForm, current_password: e.target.value })} /><FormInput label="New Password" type="password" value={s.passwordForm.new_password} onChange={(e) => s.setPasswordForm({ ...s.passwordForm, new_password: e.target.value })} /><FormInput label="Confirm Password" type="password" value={s.passwordForm.confirm_password} onChange={(e) => s.setPasswordForm({ ...s.passwordForm, confirm_password: e.target.value })} /></div>
+          {s.passwordMsg && <p className="text-sm text-blue-600 mt-3">{s.passwordMsg}</p>}
+          <button className="w-full mt-5 bg-purple-700 text-white py-3 rounded-xl font-semibold">Change Password</button>
         </form>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow p-6">
-        <h2 className="text-xl font-bold mb-4">ℹ️ Account Information</h2>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            ["User ID", user.id],
-            ["Full Name", user.full_name],
-            ["Email", user.email],
-            ["Role", user.role],
-          ].map(([label, value]) => (
-            <div key={label} className="bg-slate-50 p-4 rounded-xl">
-              <p className="text-sm text-slate-500">{label}</p>
-              <p className="font-semibold">{value || "—"}</p>
-            </div>
-          ))}
-        </div>
       </div>
     </Layout>
   );
 }
-
 export default Settings;

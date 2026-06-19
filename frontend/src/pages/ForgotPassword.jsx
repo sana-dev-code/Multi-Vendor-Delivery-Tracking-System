@@ -1,142 +1,43 @@
+/* Forgot password page: generate token and reset password. */
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { FiArrowRight, FiKey, FiLock, FiMail } from "react-icons/fi";
 import api from "../services/api";
+import AuthLayout from "../components/common/AuthLayout";
+import FormInput from "../components/common/FormInput";
 
 function ForgotPassword() {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
-
-  const [message, setMessage] = useState("");
+  const [msg, setMsg] = useState({ type: "", text: "" });
   const [loading, setLoading] = useState(false);
 
-  const handleGenerateToken = async () => {
-    try {
-      setLoading(true);
-
-      const res = await api.post("/auth/forgot-password", {
-        email,
-      });
-
-      setResetToken(res.data.reset_token);
-
-      setMessage(
-        "✅ Reset token generated. Copy the token below and reset your password."
-      );
-    } catch (err) {
-      setMessage(
-        err.response?.data?.detail || "Failed to generate reset token."
-      );
-    } finally {
-      setLoading(false);
-    }
+  const generate = async () => {
+    try { setLoading(true); const res = await api.post("/auth/forgot-password", { email }); setResetToken(res.data.reset_token); setMsg({ type: "success", text: "Reset token generated." }); }
+    catch (err) { setMsg({ type: "error", text: err.response?.data?.detail || "Failed to generate token." }); }
+    finally { setLoading(false); }
   };
 
-  const handleResetPassword = async () => {
-    try {
-      setLoading(true);
-
-      await api.post("/auth/reset-password", {
-        email,
-        reset_token: resetToken,
-        new_password: newPassword,
-      });
-
-      alert("✅ Password reset successfully.");
-
-      navigate("/");
-    } catch (err) {
-      setMessage(
-        err.response?.data?.detail || "Password reset failed."
-      );
-    } finally {
-      setLoading(false);
-    }
+  const reset = async () => {
+    try { setLoading(true); await api.post("/auth/reset-password", { email, reset_token: resetToken, new_password: newPassword }); setMsg({ type: "success", text: "Password reset. Redirecting..." }); setTimeout(() => navigate("/"), 900); }
+    catch (err) { setMsg({ type: "error", text: err.response?.data?.detail || "Reset failed." }); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="bg-white w-[450px] rounded-3xl shadow-xl p-8">
-
-        <h1 className="text-3xl font-bold text-center mb-2">
-          Forgot Password
-        </h1>
-
-        <p className="text-center text-slate-500 mb-6">
-          Reset your account password
-        </p>
-
-        {message && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 p-3 rounded-xl mb-4">
-            {message}
-          </div>
-        )}
-
-        <label className="block text-sm font-medium mb-1">
-          Email
-        </label>
-
-        <input
-          type="email"
-          className="w-full border p-3 rounded-xl mb-4"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <button
-          onClick={handleGenerateToken}
-          disabled={loading}
-          className="w-full bg-blue-600 text-white p-3 rounded-xl font-semibold mb-5"
-        >
-          Generate Reset Token
-        </button>
-
-        <label className="block text-sm font-medium mb-1">
-          Reset Token
-        </label>
-
-        <input
-          type="text"
-          className="w-full border p-3 rounded-xl mb-4"
-          value={resetToken}
-          onChange={(e) => setResetToken(e.target.value)}
-          placeholder="Paste reset token"
-        />
-
-        <label className="block text-sm font-medium mb-1">
-          New Password
-        </label>
-
-        <input
-          type="password"
-          className="w-full border p-3 rounded-xl mb-5"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          placeholder="New strong password"
-        />
-
-        <button
-          onClick={handleResetPassword}
-          disabled={loading}
-          className="w-full bg-green-600 text-white p-3 rounded-xl font-semibold"
-        >
-          Reset Password
-        </button>
-
-        <p className="text-center mt-5 text-sm">
-          <Link
-            to="/"
-            className="text-blue-600 font-semibold"
-          >
-            Back to Login
-          </Link>
-        </p>
+    <AuthLayout title="Forgot Password" subtitle="Reset your account password" icon={FiKey}>
+      {msg.text && <div className={`mb-4 rounded-xl border p-3 text-sm ${msg.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{msg.text}</div>}
+      <div className="space-y-5">
+        <FormInput label="Email" icon={FiMail} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <button onClick={generate} disabled={loading || !email} className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold disabled:opacity-60">Generate Reset Token</button>
+        <FormInput label="Reset Token" icon={FiKey} value={resetToken} onChange={(e) => setResetToken(e.target.value)} />
+        <FormInput label="New Password" icon={FiLock} type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+        <button onClick={reset} disabled={loading || !email || !resetToken || !newPassword} className="w-full h-12 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-60">Reset Password <FiArrowRight /></button>
       </div>
-    </div>
+      <p className="text-center text-sm text-slate-600 mt-7"><Link to="/" className="text-purple-700 font-bold">Back to Login</Link></p>
+    </AuthLayout>
   );
 }
-
 export default ForgotPassword;
